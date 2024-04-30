@@ -18,10 +18,7 @@ import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.lzy.redismq.config.RedisMQListenerEndpoint.buildListerEndpoint;
@@ -34,7 +31,7 @@ public class RedisMQListenerAnnotationBeanPostProcessor<K, V> implements BeanPos
     private final Set<Class<?>> nonAnnotatedClasses = Collections.newSetFromMap(new ConcurrentHashMap<>(64));
     private BeanFactory beanFactory;
     private RedisMQListenerEndpointRegistry endpointRegistry;
-    private RedisMQListenerEndpoint endpoint;
+    private Set<RedisMQListenerEndpoint> endpoints = Collections.newSetFromMap(new ConcurrentHashMap<>(64));
 
     static {
         log.info("======= @RedisMQListener Processor start  =======");
@@ -93,11 +90,13 @@ public class RedisMQListenerAnnotationBeanPostProcessor<K, V> implements BeanPos
 
     @Override
     public void afterSingletonsInstantiated() {
-        if (endpointRegistry != null && endpoint != null) {
-            endpointRegistry.registryListener(endpoint);
-            log.info("@RedisMQListener found:bean={},method={}",endpoint.getBeanName(),endpoint.getMethod().getName());
-        } else {
-            log.info("@RedisMQListener not found");
+        if (endpointRegistry != null && endpoints.size() >0) {
+            endpoints.forEach(endpoint->{
+                endpointRegistry.registryListener(endpoint);
+                log.info("@RedisMQListener annotations found:bean={},method={}",endpoint.getBeanName(),endpoint.getMethod().getName());
+            });
+        }else {
+            this.log.info("No @RedisMQListener annotations found on the project");
         }
     }
 
@@ -114,12 +113,21 @@ public class RedisMQListenerAnnotationBeanPostProcessor<K, V> implements BeanPos
     }
 
     protected void processRedisMQListener(RedisMQListener redisMQListener, Method method, Object bean, String beanName) {
+        if (this.endpointRegistry == null) {
+            this.endpointRegistry = this.beanFactory.getBean(RedisMQConfigUtils.REDIS_MQ_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME,
+                    RedisMQListenerEndpointRegistry.class);
+        }
+
+        RedisMQStreamHelper redisMQStreamHelper = this.beanFactory.getBean(RedisMQConfigUtils.REDIS_MQ_STREAM_HELPER_BEAN_NAME,
+                RedisMQStreamHelper.class);
+
         Method methodToUse = checkProxy(method, bean);
-        RedisMQStreamHelper redisMQStreamHelper = this.beanFactory.getBean(RedisMQConfigUtils.REDIS_MQ_STREAM_HELPER_BEAN_NAME, RedisMQStreamHelper.class);
-        this.endpoint = buildListerEndpoint(redisMQStreamHelper,redisMQListener, methodToUse, bean,beanName);
-        this.endpointRegistry = this.beanFactory.getBean(
-                RedisMQConfigUtils.REDIS_MQ_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME,
-                RedisMQListenerEndpointRegistry.class);
+        RedisMQListenerEndpoint endpoint = buildListerEndpoint(redisMQStreamHelper, redisMQListener, methodToUse, bean, beanName);
+        this.endpoints.add(endpoint);
+       /**
+        *  endpoints registry
+        *  @see #afterSingletonsInstantiated
+        */
     }
 
 

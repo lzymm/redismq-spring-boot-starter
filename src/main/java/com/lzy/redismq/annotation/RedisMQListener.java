@@ -38,10 +38,11 @@ public @interface RedisMQListener {
     /**
      * 每次拉去消息的数量，默认10
      */
-    int perPollSize() default 20;
+    int perPollSize() default 10;
 
     /**
      * 拉取数据超时时间（s），默认2s
+     * 2s拉取不到停止阻塞
      */
     int pollTimeoutSeconds() default 2;
 
