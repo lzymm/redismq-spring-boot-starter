@@ -4,6 +4,7 @@ import com.lzy.redismq.config.RedisMQListenerEndpoint;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.stream.StreamListener;
 
@@ -20,9 +21,11 @@ public abstract class AbstractStreamConsumer implements StreamListener<String, M
      * 消费者类型：独立消费、消费组消费
      */
     private RedisMQListenerEndpoint endpoint;
+    private Consumer consumer;
 
-    public AbstractStreamConsumer(RedisMQListenerEndpoint endpoint) {
+    public AbstractStreamConsumer(RedisMQListenerEndpoint endpoint,Consumer consumer) {
         this.endpoint = endpoint;
+        this.consumer = consumer;
 
     }
 
