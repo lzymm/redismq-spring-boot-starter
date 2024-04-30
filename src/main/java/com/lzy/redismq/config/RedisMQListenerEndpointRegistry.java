@@ -129,7 +129,7 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
                             .autoAcknowledge(endpoint.isAutoAck())
                             // 如果消费者发生了异常，判断是否取消消费者消费
                             .cancelOnError(throwable -> false).build();
-                    container.register(streamReadRequest, new AsyncStreamConsumer(endpoint));
+                    container.register(streamReadRequest, new AsyncStreamConsumer(endpoint,consumer));
                 }
                 //启动container
                 startIfNecessary(container);
@@ -146,13 +146,13 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
         if (!hasStreamKey) {
             //创建主题
             RecordId result = redisMQStreamHelper.createStream(streamKey);
-            log.info("redis-mq init create stream:{}",result.getValue());
+            log.info("redis-mq init create stream[{}]:{}",streamKey,result.getValue()!=null?"OK":"FAIL");
         }
         boolean hasGroup = redisMQStreamHelper.hasGroup(streamKey, group);
         if(!hasGroup) {
             //创建消费组
             String createGroupRet = redisMQStreamHelper.createGroup(streamKey, group);
-            log.info("redis-mq init create group:{}",createGroupRet);
+            log.info("redis-mq init create group[{}]:{}",group,createGroupRet);
         }
         log.info("redis-mq stream:{} | group:{} initialize success", streamKey, group);
     }
