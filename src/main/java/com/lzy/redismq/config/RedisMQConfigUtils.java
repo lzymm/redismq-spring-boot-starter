@@ -17,8 +17,8 @@ public abstract class RedisMQConfigUtils {
 
 
 
-    public static final String REDIS_MQ_STREAM_HELPER_BEAN_NAME =
-            "redisMQStreamHelper";
+    public static final String REDIS_MQ_HELPER_BEAN_NAME =
+            "redisMQHelper";
     public static final String REDIS_MQ_CONTAINER_FACTORY_BEAN_NAME =
             "redisMQContainerFactory";
 }

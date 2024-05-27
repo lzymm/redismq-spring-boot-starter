@@ -1,13 +1,15 @@
 package com.lzy.redismq.annotation;
 
-import com.lzy.redismq.config.RedisMQStreamConfig;
 import org.springframework.context.annotation.Import;
 
 import java.lang.annotation.*;
 
+/**
+ * 启用@RedisMQListener监听
+ */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Import({RedisMQStreamConfig.class,RedisMQListenerConfigurationSelector.class})
-public @interface EnableRedisMQ {
+@Import(RedisMQListenerConfigurationSelector.class)
+public @interface EnableRedisMQListener {
 }

@@ -1,5 +1,7 @@
-package com.lzy.redismq.config;
+package com.lzy.redismq.annotation;
 
+import com.lzy.redismq.config.RedisMQConfigUtils;
+import com.lzy.redismq.config.RedisMQHelper;
 import com.lzy.redismq.consumer.AsyncStreamConsumer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
@@ -8,7 +10,6 @@ import org.springframework.context.*;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.ReadOffset;
-import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 import org.springframework.util.Assert;
@@ -37,6 +38,38 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
         return Collections.unmodifiableCollection(this.listenerContainers.values());
     }
 
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        if (applicationContext instanceof ConfigurableApplicationContext) {
+            this.applicationContext = (ConfigurableApplicationContext) applicationContext;
+        }
+    }
+
+    @Override
+    public void onApplicationEvent(ContextRefreshedEvent event) {
+        if (event.getApplicationContext().equals(this.applicationContext)) {
+            this.contextRefreshed = true;
+        }
+    }
+
+    @Override
+    public void start() {
+        for (StreamMessageListenerContainer listenerContainer : getListenerContainers()) {
+            startIfNecessary(listenerContainer);
+        }
+        this.running = true;
+    }
+
+    @Override
+    public void stop() {
+        this.running = false;
+        for (StreamMessageListenerContainer listenerContainer : getListenerContainers()) {
+            listenerContainer.stop();
+        }
+    }
+
+    @Override
     public void destroy() throws Exception {
         for (StreamMessageListenerContainer listenerContainer : getListenerContainers()) {
             if (listenerContainer instanceof DisposableBean) {
@@ -46,32 +79,6 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
                     this.log.warn("Failed to destroy message listener container", ex);
                 }
             }
-        }
-    }
-
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        if (applicationContext instanceof ConfigurableApplicationContext) {
-            this.applicationContext = (ConfigurableApplicationContext) applicationContext;
-        }
-    }
-
-    public void onApplicationEvent(ContextRefreshedEvent event) {
-        if (event.getApplicationContext().equals(this.applicationContext)) {
-            this.contextRefreshed = true;
-        }
-    }
-
-    public void start() {
-        for (StreamMessageListenerContainer listenerContainer : getListenerContainers()) {
-            startIfNecessary(listenerContainer);
-        }
-        this.running = true;
-    }
-
-    public void stop() {
-        this.running = false;
-        for (StreamMessageListenerContainer listenerContainer : getListenerContainers()) {
-            listenerContainer.stop();
         }
     }
 
@@ -116,12 +123,13 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
                     containerGroup = new ArrayList<StreamMessageListenerContainer>();
                     this.applicationContext.getBeanFactory().registerSingleton(endpoint.getGroup(), containerGroup);
                 }
+                containerGroup.add(container);
 
                 //初始化stream & group
-                initStream(endpoint);
-                containerGroup.add(container);
+                initStreamAndGroups(endpoint);
+
                 //注册consumer
-                for (String name : endpoint.getNames()) {
+                for (String name : endpoint.getConsumers()) {
                     Consumer consumer = Consumer.from(endpoint.getGroup(), name);
                     StreamMessageListenerContainer.ConsumerStreamReadRequest<String> streamReadRequest = StreamMessageListenerContainer.StreamReadRequest
                             .builder(StreamOffset.create(endpoint.getStream(), ReadOffset.lastConsumed()))
@@ -129,31 +137,25 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
                             .autoAcknowledge(endpoint.isAutoAck())
                             // 如果消费者发生了异常，判断是否取消消费者消费
                             .cancelOnError(throwable -> false).build();
-                    container.register(streamReadRequest, new AsyncStreamConsumer(endpoint,consumer));
+                    container.register(streamReadRequest, new AsyncStreamConsumer(endpoint, consumer));
                 }
                 //启动container
                 startIfNecessary(container);
             }
         }
-
     }
 
-    private synchronized void initStream(RedisMQListenerEndpoint endpoint) {
-        String streamKey = endpoint.getStream();
-        String group = endpoint.getGroup();
-        RedisMQStreamHelper redisMQStreamHelper = endpoint.getRedisMQStreamHelper();
-        boolean hasStreamKey = redisMQStreamHelper.hasStream(streamKey);
-        if (!hasStreamKey) {
-            //创建主题
-            RecordId result = redisMQStreamHelper.createStream(streamKey);
-            log.info("redis-mq init create stream[{}]:{}",streamKey,result.getValue()!=null?"OK":"FAIL");
+    private void initStreamAndGroups(RedisMQListenerEndpoint endpoint) {
+        synchronized (EnableRedisMQListener.class) {
+            String streamKey = endpoint.getStream();
+            String group = endpoint.getGroup();
+            RedisMQHelper redisMQHelper = endpoint.getRedisMQHelper();
+            if (!redisMQHelper.hasStream(streamKey)) {
+                redisMQHelper.createStream(streamKey);
+            }
+            if (!redisMQHelper.hasGroup(streamKey, group)) {
+                redisMQHelper.createGroup(streamKey, group);
+            }
         }
-        boolean hasGroup = redisMQStreamHelper.hasGroup(streamKey, group);
-        if(!hasGroup) {
-            //创建消费组
-            String createGroupRet = redisMQStreamHelper.createGroup(streamKey, group);
-            log.info("redis-mq init create group[{}]:{}",group,createGroupRet);
-        }
-        log.info("redis-mq stream:{} | group:{} initialize success", streamKey, group);
     }
 }

@@ -1,6 +1,6 @@
 package com.lzy.redismq.consumer;
 
-import com.lzy.redismq.config.RedisMQListenerEndpoint;
+import com.lzy.redismq.annotation.RedisMQListenerEndpoint;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
