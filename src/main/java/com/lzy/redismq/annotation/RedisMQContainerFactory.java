@@ -1,5 +1,6 @@
-package com.lzy.redismq.config;
+package com.lzy.redismq.annotation;
 
+import com.lzy.redismq.annotation.RedisMQListenerEndpoint;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.serializer.RedisSerializer;

@@ -1,10 +1,9 @@
-package com.lzy.redismq.config;
+package com.lzy.redismq.annotation;
 
-import com.lzy.redismq.annotation.RedisMQListener;
+import com.lzy.redismq.config.RedisMQHelper;
 import com.lzy.redismq.error.DefaultErrorHandler;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.util.Assert;
 import org.springframework.util.ErrorHandler;
 
@@ -36,7 +35,7 @@ public class RedisMQListenerEndpoint {
     /**
      * 消费者名（数组） {C1,C2,C3}
      */
-    private Collection<String> names;
+    private Collection<String> consumers;
 
     /**
      * 是否自动确认，默认 true
@@ -54,24 +53,29 @@ public class RedisMQListenerEndpoint {
     private int pollTimeoutSeconds = 2;
     /**
      * 默认错误处理器
+     * 默认 {@link DefaultErrorHandler}
      */
-    private ErrorHandler errorHandler = new DefaultErrorHandler();
+    private ErrorHandler errorHandler;
 
-    private Executor taskExecutor = new SimpleAsyncTaskExecutor();
+    /**
+     * 异步任务执行器（线程池）
+     * 默认 {@link org.springframework.core.task.SimpleAsyncTaskExecutor}
+     */
+    private Executor taskExecutor;
 
 
     private String beanName;
     private Object bean;
     private Method method;
-    private RedisMQStreamHelper redisMQStreamHelper;
+    private RedisMQHelper redisMQHelper;
 
-    public static RedisMQListenerEndpoint buildListerEndpoint(RedisMQStreamHelper redisMQStreamHelper,RedisMQListener redisMQListener, Method method, Object bean,String beanName) {
+    public static RedisMQListenerEndpoint buildListerEndpoint(RedisMQHelper redisMQHelper,RedisMQListener redisMQListener, Method method, Object bean,String beanName) {
         try {
 
             String containerIdPrefix = "RedisMQListenerContainer#";
             RedisMQListenerEndpoint endpoint = new RedisMQListenerEndpoint();
-            endpoint.setRedisMQStreamHelper(redisMQStreamHelper);
-            endpoint.setId(containerIdPrefix+ redisMQStreamHelper.createUniqNum());
+            endpoint.setRedisMQHelper(redisMQHelper);
+            endpoint.setId(containerIdPrefix+ redisMQHelper.createUniqNum());
             endpoint.setBeanName(beanName);
             endpoint.setBean(bean);
             endpoint.setMethod(method);
@@ -84,15 +88,15 @@ public class RedisMQListenerEndpoint {
 
             String stream = redisMQListener.stream();
             String group = redisMQListener.group();
-            String[] names = redisMQListener.names();
+            String[] consumers = redisMQListener.consumers();
             Assert.hasText(stream, "@RedisListener's stream is empty!!");
             Assert.hasText(group, "@RedisListener's group is empty!!");
 
-            if (names.length == 0)
-                log.warn("@RedisListener's names is empty,will set default value by group={}", group);
+            // if (consumers.length == 0)
+            //     log.warn("@RedisListener's consumers is empty,will set default value by group={}", group);
             endpoint.setStream(stream);
             endpoint.setGroup(group);
-            endpoint.setNames(names.length == 0 ? List.of(group) : List.of(names));
+            endpoint.setConsumers(List.of(consumers));
             return endpoint;
         } catch (Exception e) {
             throw new RuntimeException(e);

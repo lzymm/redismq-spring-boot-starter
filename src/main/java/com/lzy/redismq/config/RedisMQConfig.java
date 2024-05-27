@@ -1,20 +1,24 @@
 package com.lzy.redismq.config;
 
-import com.lzy.redismq.annotation.EnableRedisMQ;
+import com.lzy.redismq.annotation.EnableRedisMQListener;
 import com.lzy.redismq.producer.RedisMQProducer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnClass(value = {EnableRedisMQ.class})
+@ConditionalOnClass(value = {EnableRedisMQListener.class})
+@EnableConfigurationProperties(RedisMQProperties.class)
+@ConditionalOnProperty(value = "spring.redis.stream.enable",matchIfMissing = false)
 @Slf4j(topic = "redis-mq:RedisMQStreamConfig")
-public class RedisMQStreamConfig {
+public class RedisMQConfig {
 
     @Bean
     @ConditionalOnMissingBean(StringRedisTemplate.class)
@@ -25,23 +29,17 @@ public class RedisMQStreamConfig {
         // redisTemplate.setHashValueSerializer(RedisSerializer.string());
         return redisTemplate;
     }
-    @Bean(RedisMQConfigUtils.REDIS_MQ_CONTAINER_FACTORY_BEAN_NAME)
-    @ConditionalOnMissingBean(RedisMQContainerFactory.class)
-    public RedisMQContainerFactory redisMQContainerFactory(RedisConnectionFactory redisConnectionFactory) {
-        return new RedisMQContainerFactory(redisConnectionFactory);
-    }
 
-    @Bean(RedisMQConfigUtils.REDIS_MQ_STREAM_HELPER_BEAN_NAME)
+    @Bean(value = RedisMQConfigUtils.REDIS_MQ_HELPER_BEAN_NAME,initMethod = "initStreams")
     @ConditionalOnBean(StringRedisTemplate.class)
-    public RedisMQStreamHelper redisMQStreamHelper(StringRedisTemplate redisTemplate) {
-        return new RedisMQStreamHelper(redisTemplate);
+    public RedisMQHelper redisMQHelper(StringRedisTemplate redisTemplate,RedisMQProperties redisMQProperties) {
+        return new RedisMQHelper(redisTemplate, redisMQProperties);
     }
 
     @Bean
-    @ConditionalOnBean(RedisMQStreamHelper.class)
-    public RedisMQProducer redisMQProducer(RedisMQStreamHelper redisMQStreamHelper) {
-        return new RedisMQProducer(redisMQStreamHelper);
+    @ConditionalOnBean(RedisMQHelper.class)
+    public RedisMQProducer redisMQProducer(RedisMQHelper redisMQHelper) {
+        return new RedisMQProducer(redisMQHelper);
     }
-
 }
 

@@ -28,7 +28,7 @@ public @interface RedisMQListener {
      * 消费者名（数组） {C1,C2,C3}
      */
     @NonNull
-    String[] names() default {};
+    String[] consumers() default {"def-consumer1","def-consumer2","def-consumer3"};
 
     /**
      * 是否自动确认，默认 true
@@ -41,8 +41,8 @@ public @interface RedisMQListener {
     int perPollSize() default 10;
 
     /**
-     * 拉取数据超时时间（s），默认2s
-     * 2s拉取不到停止阻塞
+     * 拉取数据轮询超时时间（s），默认2s
+     * 无数据时每2s轮询一次
      */
     int pollTimeoutSeconds() default 2;
 
