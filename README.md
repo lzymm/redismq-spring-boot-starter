@@ -10,6 +10,21 @@
         <version>1.0.0-SNAPSHOT</version>
     </dependency>
 ```
+配置
+```java
+spring:
+  redis:
+    stream:
+      enable: true #启用
+      def-max-len: 10
+      streams:
+        - name: stream1
+          max-len: 2
+        - name: stream2
+          max-len: 4
+
+```
+
 ### 2. 启动类添加注解 @EnableRedisMQ
 ### 3. 任意Spring Component 中添加带有注解 @RedisMQListener 的方法
 ```java

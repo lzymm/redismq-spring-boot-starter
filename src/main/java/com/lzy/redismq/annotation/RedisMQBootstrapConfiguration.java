@@ -1,7 +1,6 @@
 package com.lzy.redismq.annotation;
 
 import com.lzy.redismq.config.RedisMQConfigUtils;
-import com.lzy.redismq.config.RedisMQListenerEndpointRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -16,6 +15,13 @@ public class RedisMQBootstrapConfiguration implements ImportBeanDefinitionRegist
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
 
+
+        if (!registry.containsBeanDefinition(
+                RedisMQConfigUtils.REDIS_MQ_CONTAINER_FACTORY_BEAN_NAME)) {
+
+            registry.registerBeanDefinition(RedisMQConfigUtils.REDIS_MQ_CONTAINER_FACTORY_BEAN_NAME,
+                    new RootBeanDefinition(RedisMQContainerFactory.class));
+        }
 
         if (!registry.containsBeanDefinition(
                 RedisMQConfigUtils.REDIS_MQ_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)) {

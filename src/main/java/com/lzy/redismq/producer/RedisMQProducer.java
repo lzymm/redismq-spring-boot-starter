@@ -1,16 +1,16 @@
 package com.lzy.redismq.producer;
 
-import com.lzy.redismq.config.RedisMQStreamHelper;
+import com.lzy.redismq.config.RedisMQHelper;
 
 import java.util.Map;
 
 public class RedisMQProducer {
 
-    private RedisMQStreamHelper redisMQStreamHelper;
+    private RedisMQHelper redisMQHelper;
     private volatile boolean createdStreamKey = false;
 
-    public RedisMQProducer(RedisMQStreamHelper redisMQStreamHelper) {
-        this.redisMQStreamHelper = redisMQStreamHelper;
+    public RedisMQProducer(RedisMQHelper redisMQHelper) {
+        this.redisMQHelper = redisMQHelper;
     }
 
     public String sendMessage(String streamKey, Map<String, Object> message) {
@@ -27,14 +27,14 @@ public class RedisMQProducer {
         if(!createdStreamKey){
             synchronized (this.getClass()) {
                 if(!createdStreamKey){
-                    boolean hasKey = redisMQStreamHelper.hasStream(streamKey);
+                    boolean hasKey = redisMQHelper.hasStream(streamKey);
                     if (!hasKey) {
-                        redisMQStreamHelper.createStream(streamKey);
+                        redisMQHelper.createStream(streamKey);
                     }
                     createdStreamKey = true;
                 }
             }
         }
-        return  redisMQStreamHelper.sendMap(streamKey,message);
+        return  redisMQHelper.sendMap(streamKey,message);
     }
 }

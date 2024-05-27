@@ -1,9 +1,7 @@
 package com.lzy.redismq.annotation;
 
 import com.lzy.redismq.config.RedisMQConfigUtils;
-import com.lzy.redismq.config.RedisMQListenerEndpoint;
-import com.lzy.redismq.config.RedisMQListenerEndpointRegistry;
-import com.lzy.redismq.config.RedisMQStreamHelper;
+import com.lzy.redismq.config.RedisMQHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.support.AopUtils;
@@ -21,7 +19,7 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.lzy.redismq.config.RedisMQListenerEndpoint.buildListerEndpoint;
+import static com.lzy.redismq.annotation.RedisMQListenerEndpoint.buildListerEndpoint;
 
 /**
  * 一个用于解析注册被{@link RedisMQListener}标记的方法的 bean 后置处理器
@@ -30,8 +28,9 @@ import static com.lzy.redismq.config.RedisMQListenerEndpoint.buildListerEndpoint
 public class RedisMQListenerAnnotationBeanPostProcessor<K, V> implements BeanPostProcessor, Ordered, BeanFactoryAware, SmartInitializingSingleton {
     private final Set<Class<?>> nonAnnotatedClasses = Collections.newSetFromMap(new ConcurrentHashMap<>(64));
     private BeanFactory beanFactory;
+
     private RedisMQListenerEndpointRegistry endpointRegistry;
-    private Set<RedisMQListenerEndpoint> endpoints = Collections.newSetFromMap(new ConcurrentHashMap<>(64));
+    private List<RedisMQListenerEndpoint> endpoints = new ArrayList<>();
 
     static {
         log.info("======= @RedisMQListener Processor start  =======");
@@ -43,7 +42,7 @@ public class RedisMQListenerAnnotationBeanPostProcessor<K, V> implements BeanPos
     }
 
     /**
-     * 在这里进行注解读取解析
+     * bean 初始化后置处理器，在这里进行注解读取解析
      */
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
@@ -90,12 +89,16 @@ public class RedisMQListenerAnnotationBeanPostProcessor<K, V> implements BeanPos
 
     @Override
     public void afterSingletonsInstantiated() {
-        if (endpointRegistry != null && endpoints.size() >0) {
-            endpoints.forEach(endpoint->{
+        if (this.endpointRegistry == null) {
+            this.endpointRegistry = this.beanFactory.getBean(RedisMQConfigUtils.REDIS_MQ_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME,
+                    RedisMQListenerEndpointRegistry.class);
+        }
+        if (endpointRegistry != null && endpoints.size() > 0) {
+            endpoints.forEach(endpoint -> {
                 endpointRegistry.registryListener(endpoint);
-                log.info("@RedisMQListener annotations found:bean={},method={}",endpoint.getBeanName(),endpoint.getMethod().getName());
+                log.info("@RedisMQListener annotations found:bean={},method={}", endpoint.getBeanName(), endpoint.getMethod().getName());
             });
-        }else {
+        } else {
             this.log.info("No @RedisMQListener annotations found on the project");
         }
     }
@@ -113,23 +116,15 @@ public class RedisMQListenerAnnotationBeanPostProcessor<K, V> implements BeanPos
     }
 
     protected void processRedisMQListener(RedisMQListener redisMQListener, Method method, Object bean, String beanName) {
-        if (this.endpointRegistry == null) {
-            this.endpointRegistry = this.beanFactory.getBean(RedisMQConfigUtils.REDIS_MQ_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME,
-                    RedisMQListenerEndpointRegistry.class);
-        }
-
-        RedisMQStreamHelper redisMQStreamHelper = this.beanFactory.getBean(RedisMQConfigUtils.REDIS_MQ_STREAM_HELPER_BEAN_NAME,
-                RedisMQStreamHelper.class);
-
         Method methodToUse = checkProxy(method, bean);
-        RedisMQListenerEndpoint endpoint = buildListerEndpoint(redisMQStreamHelper, redisMQListener, methodToUse, bean, beanName);
-        this.endpoints.add(endpoint);
-       /**
-        *  endpoints registry
-        *  @see #afterSingletonsInstantiated
-        */
-    }
+        RedisMQHelper redisMQHelper = this.beanFactory.getBean(RedisMQConfigUtils.REDIS_MQ_HELPER_BEAN_NAME, RedisMQHelper.class);
+        this.endpoints.add(buildListerEndpoint(redisMQHelper, redisMQListener, methodToUse, bean, beanName));
+        /**
+         * 注册所有 listener
+         * @see #afterSingletonsInstantiated
+         */
 
+    }
 
 
     /**
@@ -165,7 +160,6 @@ public class RedisMQListenerAnnotationBeanPostProcessor<K, V> implements BeanPos
         }
         return method;
     }
-
 
 
 }
