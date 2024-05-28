@@ -120,7 +120,7 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
                 if (this.applicationContext.containsBean(endpoint.getGroup())) {
                     containerGroup = this.applicationContext.getBean(endpoint.getGroup(), List.class);
                 } else {
-                    containerGroup = new ArrayList<StreamMessageListenerContainer>();
+                    containerGroup = new ArrayList<>();
                     this.applicationContext.getBeanFactory().registerSingleton(endpoint.getGroup(), containerGroup);
                 }
                 containerGroup.add(container);
@@ -136,7 +136,9 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
                             .consumer(consumer)
                             .autoAcknowledge(endpoint.isAutoAck())
                             // 如果消费者发生了异常，判断是否取消消费者消费
-                            .cancelOnError(throwable -> false).build();
+                            .errorHandler(endpoint.getErrorHandler())
+                            .cancelOnError(throwable -> true)
+                            .build();
                     container.register(streamReadRequest, new AsyncStreamConsumer(endpoint, consumer));
                 }
                 //启动container
