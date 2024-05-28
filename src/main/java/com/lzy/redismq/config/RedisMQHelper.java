@@ -43,9 +43,7 @@ public class RedisMQHelper {
      * @return java.lang.String
      */
     public void initStreams() {
-        streamMap.forEach((streamKey, streamLen) -> {
-            createStream(streamKey);
-        });
+        streamMap.keySet().forEach(this::createStream);
     }
 
     /**
@@ -102,20 +100,11 @@ public class RedisMQHelper {
      * @param value     消息数据
      */
     public String sendMap(String streamKey, Map<String, Object> value) {
-        String id = stringRedisTemplate.opsForStream().add(streamKey, value).getValue();
-        Long maxLen = streamMap.getOrDefault(streamKey, defMaxLen);
-        if (maxLen != null && maxLen != 0) {
-           trim(streamKey, maxLen);
-        }
-        return id;
+        RecordId recordId = stringRedisTemplate.opsForStream().add(streamKey, value);
+        return recordId!=null?recordId.getValue():null;
     }
 
     public Long trim(String streamKey, Long maxLen) {
-        // MapRecord<String, String, Object> record = StreamRecords.newRecord().in(streamKey).ofMap(value);
-        // Assert.notNull(record, "redis-mq stream init:Record must not be null");
-        // RedisSerializer<String> stringSerializer = stringRedisTemplate.getStringSerializer();
-        // ByteRecord serialize = record.serialize(stringSerializer);
-        // RecordId recordId = stringRedisTemplate.getConnectionFactory().getConnection().xAdd(serialize, RedisStreamCommands.XAddOptions.maxlen(maxLen));
         Long trimCount = stringRedisTemplate.opsForStream().trim(streamKey, maxLen);
         return trimCount;
     }
@@ -170,7 +159,7 @@ public class RedisMQHelper {
     public boolean hasGroup(String streamKey, String group) {
         StreamInfo.XInfoGroups groups = stringRedisTemplate.opsForStream().groups(streamKey);
         boolean anyMatch = groups.stream().anyMatch(xInfoGroup -> xInfoGroup.groupName().equals(group));
-        return Optional.ofNullable(anyMatch).orElse(Boolean.FALSE);
+        return anyMatch;
     }
 
 }
