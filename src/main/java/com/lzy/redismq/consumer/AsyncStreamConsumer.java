@@ -1,6 +1,7 @@
 package com.lzy.redismq.consumer;
 
 import com.lzy.redismq.annotation.RedisMQListenerEndpoint;
+import com.lzy.redismq.exception.RedisMQException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -23,7 +24,7 @@ public class AsyncStreamConsumer extends AbstractStreamConsumer {
             log.debug("自动akc处理一条消息：id={},content={} ", message.getId(), message.getValue());
             this.getEndpoint().getMethod().invoke(this.getEndpoint().getBean(), message,getConsumer());
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
+            throw new RedisMQException(e);
         }
 
     }
@@ -38,7 +39,7 @@ public class AsyncStreamConsumer extends AbstractStreamConsumer {
             log.debug("手动ack处理一条消息：id={},content={} ", message.getId(), message.getValue());
             this.getEndpoint().getMethod().invoke(this.getEndpoint().getBean(), message,getConsumer(), acknowledge);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
+            throw new RedisMQException(e);
         }
     }
 }

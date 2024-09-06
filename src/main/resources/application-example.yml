@@ -1,0 +1,17 @@
+# redis \u914D\u7F6E
+spring:
+  redis:
+    host: localhost
+    password:
+    port: 6379
+    database: 0
+    connect-timeout: 5000
+    client-type: jedis
+    stream:
+      enable: true
+      defMaxLen: 10
+      keys:
+        - name: stream1
+          max-len: 10
+        - name: stream2
+          max-len: 5

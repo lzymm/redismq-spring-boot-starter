@@ -17,7 +17,7 @@ spring:
     stream:
       enable: true #启用
       def-max-len: 10
-      streams:
+      keys:
         - name: stream1
           max-len: 2
         - name: stream2

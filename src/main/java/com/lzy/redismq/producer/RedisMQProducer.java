@@ -34,7 +34,7 @@ public class RedisMQProducer {
      * @return java.lang.String
      */
     public String sendMessage(String streamKey, Map<String, Object> message) {
-        return sendMap(streamKey, message);
+            return sendMap(streamKey, message);
     }
 
     /**
@@ -49,7 +49,7 @@ public class RedisMQProducer {
                 if(!createdStreamKey){
                     boolean hasKey = redisMQHelper.hasStream(streamKey);
                     if (!hasKey) {
-                        redisMQHelper.createStream(streamKey);
+                redisMQHelper.createStream(streamKey);
                     }
                     createdStreamKey = true;
                 }
@@ -65,7 +65,7 @@ public class RedisMQProducer {
         lenCounter.decrement();
         Long maxLen = streamLenRecord.getOrDefault(streamKey, defMaxLen);
         if (lenCounter.sum() >= 1.5*maxLen) {
-            redisMQHelper.trim(streamKey, maxLen);
+                redisMQHelper.trim(streamKey, maxLen);
         }
     }
 }

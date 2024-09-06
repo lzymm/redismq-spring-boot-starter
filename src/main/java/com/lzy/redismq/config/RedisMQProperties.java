@@ -18,14 +18,16 @@ public class RedisMQProperties {
      */
     private Long defMaxLen = 5000L;
     /**
-     * stream 信息
+     * stream key 信息
      * name: stream key 名称
      * maxLen: stream key 长度
      */
-    private List<info> infos = new ArrayList<>();
+    private List<StreamKey> keys = new ArrayList<>();
+
+
 
     @Data
-    public static class info {
+    public static class StreamKey {
         private String name;
         private Long maxLen;
     }

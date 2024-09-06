@@ -28,7 +28,7 @@ public class RedisMQHelper {
 
     public RedisMQHelper(StringRedisTemplate stringRedisTemplate, RedisMQProperties redisMQProperties) {
         this.stringRedisTemplate = stringRedisTemplate;
-        this.streamMap.putAll(redisMQProperties.getInfos().stream().collect(Collectors.toMap(RedisMQProperties.info::getName, RedisMQProperties.info::getMaxLen, (s1, s2) -> s2)));
+        this.streamMap.putAll(redisMQProperties.getKeys().stream().collect(Collectors.toMap(RedisMQProperties.StreamKey::getName, RedisMQProperties.StreamKey::getMaxLen, (s1, s2) -> s2)));
         this.defMaxLen = redisMQProperties.getDefMaxLen();
     }
 
@@ -104,10 +104,21 @@ public class RedisMQHelper {
         return recordId!=null?recordId.getValue():null;
     }
 
+    /**
+     * 根据最大长度修剪指定stream(近似最大长度,非精确)。
+     *
+     * 该方法通过调用Redis的stream trim命令，来限制指定流键（streamKey）中消费组的最大长度。
+     * 如果流中的消息数量超过了指定的最大长度（maxLen），则会删除最旧的消息，以保证流的长度不超过限制。
+     *
+     * @param streamKey 需要修剪的流键。
+     * @param maxLen 指定的最大长度，超过该长度的旧消息将被删除。
+     * @return 返回被删除的消息数量。
+     */
     public Long trim(String streamKey, Long maxLen) {
         Long trimCount = stringRedisTemplate.opsForStream().trim(streamKey, maxLen);
         return trimCount;
     }
+
 
     /**
      * 读取消息
@@ -160,6 +171,10 @@ public class RedisMQHelper {
         StreamInfo.XInfoGroups groups = stringRedisTemplate.opsForStream().groups(streamKey);
         boolean anyMatch = groups.stream().anyMatch(xInfoGroup -> xInfoGroup.groupName().equals(group));
         return anyMatch;
+    }
+
+    public Object pending(String streamKey, String group, Long timeout) {
+        return stringRedisTemplate.opsForStream().pending(streamKey, group);
     }
 
 }
