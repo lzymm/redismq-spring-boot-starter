@@ -2,7 +2,7 @@ package com.lzy.redismq.annotation;
 
 import com.lzy.redismq.config.RedisMQConfigUtils;
 import com.lzy.redismq.config.RedisMQHelper;
-import com.lzy.redismq.consumer.AsyncStreamConsumer;
+import com.lzy.redismq.consumer.AsyncRedisMQConsumer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.DisposableBean;
@@ -112,7 +112,7 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
                     "Another endpoint is already registered with id '" + id + "'");
 
             if (StringUtils.hasText(endpoint.getGroup()) && this.applicationContext != null) {
-
+                //创建stream消息监听容器
                 StreamMessageListenerContainer container = createListenerContainer(endpoint);
                 listenerContainers.put(endpoint.getId(), container);
 
@@ -125,10 +125,11 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
                 }
                 containerGroup.add(container);
 
-                //初始化stream & group
-                initStreamAndGroups(endpoint);
 
-                //注册consumer
+                // 初始化stream & group
+                initStreamAndGroup(endpoint);
+
+                // 注册consumer
                 for (String name : endpoint.getConsumers()) {
                     Consumer consumer = Consumer.from(endpoint.getGroup(), name);
                     StreamMessageListenerContainer.ConsumerStreamReadRequest<String> streamReadRequest = StreamMessageListenerContainer.StreamReadRequest
@@ -137,26 +138,26 @@ public class RedisMQListenerEndpointRegistry implements DisposableBean, SmartLif
                             .autoAcknowledge(endpoint.isAutoAck())
                             // 如果消费者发生了异常，判断是否取消消费者消费
                             .errorHandler(endpoint.getErrorHandler())
-                            .cancelOnError(throwable -> true)
+                            .cancelOnError(throwable -> endpoint.getErrorHandleStrategy().exec(throwable))
                             .build();
-                    container.register(streamReadRequest, new AsyncStreamConsumer(endpoint, consumer));
+                    container.register(streamReadRequest, new AsyncRedisMQConsumer(endpoint, consumer));
                 }
-                //启动container
+                // 启动container
                 startIfNecessary(container);
             }
         }
     }
 
-    private void initStreamAndGroups(RedisMQListenerEndpoint endpoint) {
+    private void initStreamAndGroup(RedisMQListenerEndpoint endpoint) {
         synchronized (EnableRedisMQListener.class) {
-            String streamKey = endpoint.getStream();
+            String stream = endpoint.getStream();
             String group = endpoint.getGroup();
             RedisMQHelper redisMQHelper = endpoint.getRedisMQHelper();
-            if (!redisMQHelper.hasStream(streamKey)) {
-                redisMQHelper.createStream(streamKey);
-            }
-            if (!redisMQHelper.hasGroup(streamKey, group)) {
-                redisMQHelper.createGroup(streamKey, group);
+            if (redisMQHelper != null) {
+                redisMQHelper.createStream(stream);
+                redisMQHelper.createGroup(stream, group);
+            } else {
+                log.error("redisMQHelper not init");
             }
         }
     }

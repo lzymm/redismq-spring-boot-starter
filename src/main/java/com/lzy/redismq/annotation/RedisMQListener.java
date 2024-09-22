@@ -1,5 +1,6 @@
 package com.lzy.redismq.annotation;
 
+import com.lzy.redismq.error.DefaultErrorHandleStrategy;
 import com.lzy.redismq.error.DefaultErrorHandler;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.lang.NonNull;
@@ -50,6 +51,6 @@ public @interface RedisMQListener {
      * 默认错误处理器
      */
     Class<? extends ErrorHandler> errorHandler() default DefaultErrorHandler.class;
-
+    Class<? extends DefaultErrorHandleStrategy> errorHandleStrategy() default DefaultErrorHandleStrategy.class;
     Class<? extends Executor> taskExecutor() default SimpleAsyncTaskExecutor.class;
 }

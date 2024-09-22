@@ -7,7 +7,7 @@
     <dependency>
         <groupId>com.lzy</groupId>
         <artifactId>redismq-spring-boot-starter</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.1.0-SNAPSHOT</version>
     </dependency>
 ```
 配置(消费者端可以不做配置)
@@ -76,6 +76,9 @@ public class ConsumerService {
 }
    
 ```
+
+### Redis Stream 基本信息查看页面
+http://ip:port/redis-mq.html
 
 
 

@@ -16,14 +16,14 @@ import org.springframework.data.redis.stream.StreamListener;
 @Slf4j
 @Getter
 @Setter
-public abstract class AbstractStreamConsumer implements StreamListener<String, MapRecord<String, String, Object>> {
+public abstract class AbstractRedisMQConsumer implements StreamListener<String, MapRecord<String, String, Object>> {
     /**
      * 消费者类型：独立消费、消费组消费
      */
     private RedisMQListenerEndpoint endpoint;
     private Consumer consumer;
 
-    public AbstractStreamConsumer(RedisMQListenerEndpoint endpoint,Consumer consumer) {
+    public AbstractRedisMQConsumer(RedisMQListenerEndpoint endpoint, Consumer consumer) {
         this.endpoint = endpoint;
         this.consumer = consumer;
 
@@ -39,16 +39,16 @@ public abstract class AbstractStreamConsumer implements StreamListener<String, M
         if (endpoint.isAutoAck()) {
             dealMessageAck(message);
         } else {
-            dealMessage(message, new StreamAcknowledge(endpoint));
+            dealMessage(message, new RedisMQAcknowledge(endpoint));
         }
     }
 
     /**
      * 处理消息方法 :实现业务逻辑
      * 如果设置{@link RedisMQListenerEndpoint#isAutoAck()}==false，
-     * 需要手动调用 {@link StreamAcknowledge#ack(MapRecord)} 方法
+     * 需要手动调用 {@link RedisMQAcknowledge#ack(MapRecord)} 方法
      */
     public abstract void dealMessageAck(MapRecord<String, String, Object> message);
 
-    public abstract void dealMessage(MapRecord<String, String, Object> message, StreamAcknowledge acknowledge);
+    public abstract void dealMessage(MapRecord<String, String, Object> message, RedisMQAcknowledge acknowledge);
 }

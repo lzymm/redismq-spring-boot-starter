@@ -7,7 +7,8 @@ import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.connection.stream.StreamInfo;
 import org.springframework.data.redis.connection.stream.StreamOffset;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.util.Assert;
 
 import java.util.HashMap;
 import java.util.List;
@@ -16,20 +17,35 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+
+/**
+ * RedisMQ 基础操作类
+ * redisTemplate stream操作封装
+ * @author: lzy
+ * @date: 2024-09-07 01:28:56
+ */
 @Getter
 @Setter
 @Slf4j(topic = "redis-mq:RedisMQHelper")
 public class RedisMQHelper {
     private final AtomicInteger uniqCounter = new AtomicInteger(0);
 
-    private StringRedisTemplate stringRedisTemplate;
-    private Map<String, Long> streamMap = new HashMap<>();
+    private RedisTemplate redisTemplate;
+
+    private RedisMQProperties redisMQProperties;
+    private Map<String, Long> streamConfigMap = new HashMap<>();
     private Long defMaxLen;
 
-    public RedisMQHelper(StringRedisTemplate stringRedisTemplate, RedisMQProperties redisMQProperties) {
-        this.stringRedisTemplate = stringRedisTemplate;
-        this.streamMap.putAll(redisMQProperties.getKeys().stream().collect(Collectors.toMap(RedisMQProperties.StreamKey::getName, RedisMQProperties.StreamKey::getMaxLen, (s1, s2) -> s2)));
-        this.defMaxLen = redisMQProperties.getDefMaxLen();
+    public RedisMQHelper(RedisTemplate redisTemplate, RedisMQProperties redisMQProperties) {
+        this.redisTemplate = redisTemplate;
+        this.redisMQProperties = redisMQProperties;
+        if (this.redisMQProperties.isEnable()) {
+            Assert.isTrue(!this.redisMQProperties.getKeys().isEmpty(),"stream keys is empty,please check properties");
+            this.streamConfigMap.putAll(redisMQProperties.getKeys().stream().collect(Collectors.toMap(RedisMQProperties.RedisMQInfo::getName, RedisMQProperties.RedisMQInfo::getMaxLen, (s1, s2) -> s2)));
+            this.defMaxLen = redisMQProperties.getDefMaxLen();
+        }
+
+
     }
 
 
@@ -43,7 +59,7 @@ public class RedisMQHelper {
      * @return java.lang.String
      */
     public void initStreams() {
-        streamMap.keySet().forEach(this::createStream);
+        streamConfigMap.keySet().forEach(this::createStream);
     }
 
     /**
@@ -58,8 +74,8 @@ public class RedisMQHelper {
             log.info("redis-mq stream[{}] already exists", streamKey);
             return;
         }
-        RecordId recordId = stringRedisTemplate.opsForStream().add(streamKey, Map.of("init-test-msg", "hello-redis-stream"));
-        stringRedisTemplate.opsForStream().delete(streamKey, recordId);
+        RecordId recordId = redisTemplate.opsForStream().add(streamKey, Map.of("init-test-msg", "hello-redis-stream"));
+        redisTemplate.opsForStream().delete(streamKey, recordId);
         log.info("redis-mq stream[{}] initialize success", streamKey);
     }
 
@@ -77,21 +93,12 @@ public class RedisMQHelper {
             log.info("redis-mq stream-group[{}-{}] already exists", streamKey, group);
             return null;
         }
-        String ret = stringRedisTemplate.opsForStream().createGroup(streamKey, group);
+        String ret = redisTemplate.opsForStream().createGroup(streamKey, group);
         log.info("redis-mq stream-group[{}-{}] initialize success", streamKey, group, ret);
         return ret;
     }
 
-    /**
-     * 获取消费者信息
-     *
-     * @param streamKey stream-key值
-     * @param group     消费组
-     * @return org.springframework.data.redis.connection.stream.StreamInfo.XInfoConsumers
-     */
-    public StreamInfo.XInfoConsumers queryConsumers(String streamKey, String group) {
-        return stringRedisTemplate.opsForStream().consumers(streamKey, group);
-    }
+
 
     /**
      * 添加Map消息
@@ -100,25 +107,14 @@ public class RedisMQHelper {
      * @param value     消息数据
      */
     public String sendMap(String streamKey, Map<String, Object> value) {
-        RecordId recordId = stringRedisTemplate.opsForStream().add(streamKey, value);
+        RecordId recordId = redisTemplate.opsForStream().add(streamKey, value);
         return recordId!=null?recordId.getValue():null;
     }
 
-    /**
-     * 根据最大长度修剪指定stream(近似最大长度,非精确)。
-     *
-     * 该方法通过调用Redis的stream trim命令，来限制指定流键（streamKey）中消费组的最大长度。
-     * 如果流中的消息数量超过了指定的最大长度（maxLen），则会删除最旧的消息，以保证流的长度不超过限制。
-     *
-     * @param streamKey 需要修剪的流键。
-     * @param maxLen 指定的最大长度，超过该长度的旧消息将被删除。
-     * @return 返回被删除的消息数量。
-     */
     public Long trim(String streamKey, Long maxLen) {
-        Long trimCount = stringRedisTemplate.opsForStream().trim(streamKey, maxLen);
+        Long trimCount = redisTemplate.opsForStream().trim(streamKey, maxLen);
         return trimCount;
     }
-
 
     /**
      * 读取消息
@@ -127,7 +123,7 @@ public class RedisMQHelper {
      * @return java.util.List<org.springframework.data.redis.connection.stream.MapRecord < java.lang.String, java.lang.Object, java.lang.Object>>
      */
     public List<MapRecord<String, Object, Object>> read(String streamKey) {
-        return stringRedisTemplate.opsForStream().read(StreamOffset.fromStart(streamKey));
+        return redisTemplate.opsForStream().read(StreamOffset.fromStart(streamKey));
     }
 
     /**
@@ -139,7 +135,7 @@ public class RedisMQHelper {
      * @return java.lang.Long
      */
     public Long ack(String streamKey, String group, String... recordIds) {
-        return stringRedisTemplate.opsForStream().acknowledge(streamKey, group, recordIds);
+        return redisTemplate.opsForStream().acknowledge(streamKey, group, recordIds);
     }
 
 
@@ -149,7 +145,7 @@ public class RedisMQHelper {
      * @return java.lang.Long
      */
     public Long del(String streamKey, String... recordIds) {
-        return stringRedisTemplate.opsForStream().delete(streamKey, recordIds);
+        return redisTemplate.opsForStream().delete(streamKey, recordIds);
     }
 
     /**
@@ -158,7 +154,7 @@ public class RedisMQHelper {
      * @param streamKey
      */
     public boolean hasStream(String streamKey) {
-        Boolean aBoolean = stringRedisTemplate.hasKey(streamKey);
+        Boolean aBoolean = redisTemplate.hasKey(streamKey);
         return Optional.ofNullable(aBoolean).orElse(Boolean.FALSE);
     }
 
@@ -168,13 +164,37 @@ public class RedisMQHelper {
      * @param streamKey
      */
     public boolean hasGroup(String streamKey, String group) {
-        StreamInfo.XInfoGroups groups = stringRedisTemplate.opsForStream().groups(streamKey);
+        StreamInfo.XInfoGroups groups = redisTemplate.opsForStream().groups(streamKey);
         boolean anyMatch = groups.stream().anyMatch(xInfoGroup -> xInfoGroup.groupName().equals(group));
         return anyMatch;
     }
 
-    public Object pending(String streamKey, String group, Long timeout) {
-        return stringRedisTemplate.opsForStream().pending(streamKey, group);
+    public Map<String, Object> getStreamInfo(String streamKey) {
+        return getStreamInfo(new RedisMQProperties.RedisMQInfo(streamKey,getDefMaxLen()));
     }
-
+    public Map<String, Object> getStreamInfo(RedisMQProperties.RedisMQInfo streamKeyInfo) {
+        StreamInfo.XInfoStream info = redisTemplate.opsForStream().info(streamKeyInfo.getName());
+        return Map.of(
+                "name",streamKeyInfo.getName(),
+                "maxLen", streamKeyInfo.getMaxLen(),
+                "currLen",info.getRaw().get("length"),
+                "groups",info.getRaw().get("groups"),
+                "last-generated-id",info.getRaw().get("last-generated-id")
+        );
+    }
+    public List<Map> streams() {
+        List<RedisMQProperties.RedisMQInfo> streams = this.redisMQProperties.getKeys();
+        List<Map> streamList = streams.stream().map(streamKey -> getStreamInfo(streamKey)).collect(Collectors.toList());
+        return streamList;
+    }
+    public StreamInfo.XInfoGroups groups(String streamKey) {
+        StreamInfo.XInfoGroups groups = redisTemplate.opsForStream().groups(streamKey);
+        return groups;
+    }
+    public StreamInfo.XInfoConsumers consumers(String streamKey, String group) {
+        return redisTemplate.opsForStream().consumers(streamKey, group);
+    }
+    public Long size(String streamKey) {
+        return redisTemplate.opsForStream().size(streamKey);
+    }
 }

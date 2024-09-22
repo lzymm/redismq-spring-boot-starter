@@ -21,7 +21,7 @@ public class RedisMQContainerFactory {
 
     public StreamMessageListenerContainer createContainer(RedisMQListenerEndpoint endpoint) {
 
-        StreamMessageListenerContainerOptions<String, MapRecord<String, String, Object>> options =
+        StreamMessageListenerContainerOptions<String, MapRecord<String, Object, Object>> options =
                 StreamMessageListenerContainerOptions.builder()
                         // ObjectRecord 时，将 对象的 filed 和 value 转换成一个 Map 比如：将Book对象转换成map
                         // .objectMapper()
@@ -36,9 +36,10 @@ public class RedisMQContainerFactory {
                         .executor(endpoint.getTaskExecutor())
                         .errorHandler(endpoint.getErrorHandler())
                         .hashKeySerializer(RedisSerializer.string())
+                        .hashValueSerializer(RedisSerializer.json())
                         .build();
 
-        StreamMessageListenerContainer<String, MapRecord<String, String, Object>> container = StreamMessageListenerContainer.create(redisConnectionFactory, options);
+        StreamMessageListenerContainer<String, MapRecord<String, Object, Object>> container = StreamMessageListenerContainer.create(redisConnectionFactory, options);
         return container;
     }
 }

@@ -1,2 +1,4 @@
 # Auto Configure
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=com.lzy.redismq.config.RedisMQConfig
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.lzy.redismq.config.RedisMQConfig,\
+  com.lzy.redismq.web.RedisMqDashboard

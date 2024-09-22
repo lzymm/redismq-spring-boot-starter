@@ -8,9 +8,14 @@ import org.springframework.data.redis.connection.stream.MapRecord;
 
 import java.lang.reflect.InvocationTargetException;
 
+/**
+ * 异步消息消费者
+ * @author: lzy
+ * @date: 2024-09-12 23:57:38
+ */
 @Slf4j
-public class AsyncStreamConsumer extends AbstractStreamConsumer {
-    public AsyncStreamConsumer(RedisMQListenerEndpoint endpoint, Consumer consumer) {
+public class AsyncRedisMQConsumer extends AbstractRedisMQConsumer {
+    public AsyncRedisMQConsumer(RedisMQListenerEndpoint endpoint, Consumer consumer) {
         super(endpoint,consumer);
     }
 
@@ -31,10 +36,10 @@ public class AsyncStreamConsumer extends AbstractStreamConsumer {
 
     /**
      * 处理消息方法 :实现业务逻辑
-     * 需要手动调用 {@link StreamAcknowledge#ack(MapRecord)} 方法
+     * 需要手动调用 {@link RedisMQAcknowledge#ack(MapRecord)} 方法
      */
     @Override
-    public void dealMessage(MapRecord<String, String, Object> message, StreamAcknowledge acknowledge) {
+    public void dealMessage(MapRecord<String, String, Object> message, RedisMQAcknowledge acknowledge) {
         try {
             log.debug("手动ack处理一条消息：id={},content={} ", message.getId(), message.getValue());
             this.getEndpoint().getMethod().invoke(this.getEndpoint().getBean(), message,getConsumer(), acknowledge);

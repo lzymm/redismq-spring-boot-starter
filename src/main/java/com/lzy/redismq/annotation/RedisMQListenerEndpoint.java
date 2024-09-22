@@ -1,7 +1,9 @@
 package com.lzy.redismq.annotation;
 
 import com.lzy.redismq.config.RedisMQHelper;
+import com.lzy.redismq.error.DefaultErrorHandleStrategy;
 import com.lzy.redismq.error.DefaultErrorHandler;
+import com.lzy.redismq.error.ErrorHandleStrategy;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
@@ -56,6 +58,11 @@ public class RedisMQListenerEndpoint {
      * 默认 {@link DefaultErrorHandler}
      */
     private ErrorHandler errorHandler;
+    /**
+     * 默认错误处策略
+     * 默认 {@link DefaultErrorHandleStrategy}
+     */
+    private ErrorHandleStrategy errorHandleStrategy;
 
     /**
      * 异步任务执行器（线程池）
@@ -69,13 +76,13 @@ public class RedisMQListenerEndpoint {
     private Method method;
     private RedisMQHelper redisMQHelper;
 
-    public static RedisMQListenerEndpoint buildListerEndpoint(RedisMQHelper redisMQHelper,RedisMQListener redisMQListener, Method method, Object bean,String beanName) {
+    public static RedisMQListenerEndpoint buildListerEndpoint(RedisMQHelper redisMQHelper, RedisMQListener redisMQListener, Method method, Object bean, String beanName) {
         try {
 
             String containerIdPrefix = "RedisMQListenerContainer#";
             RedisMQListenerEndpoint endpoint = new RedisMQListenerEndpoint();
             endpoint.setRedisMQHelper(redisMQHelper);
-            endpoint.setId(containerIdPrefix+ redisMQHelper.createUniqNum());
+            endpoint.setId(containerIdPrefix + redisMQHelper.createUniqNum());
             endpoint.setBeanName(beanName);
             endpoint.setBean(bean);
             endpoint.setMethod(method);
@@ -83,6 +90,7 @@ public class RedisMQListenerEndpoint {
             endpoint.setPerPollSize(redisMQListener.perPollSize());
             endpoint.setPollTimeoutSeconds(redisMQListener.pollTimeoutSeconds());
             endpoint.setErrorHandler(redisMQListener.errorHandler().getDeclaredConstructor().newInstance());
+            endpoint.setErrorHandleStrategy(redisMQListener.errorHandleStrategy().getDeclaredConstructor().newInstance());
             endpoint.setTaskExecutor(redisMQListener.taskExecutor().getDeclaredConstructor().newInstance());
 
 

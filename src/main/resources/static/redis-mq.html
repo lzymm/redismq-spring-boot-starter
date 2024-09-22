@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>redis stream</title>
+    <style>
+        .el-container {
+            color: #333;
+            text-align: center;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="hello-app" style="align-content: center">
+
+    <el-container >
+        <el-main>
+            <el-breadcrumb separator="/">
+                <el-breadcrumb-item v-show="showItemState>0"><a @click="showItem(1)">Queue</a></el-breadcrumb-item>
+                <el-breadcrumb-item v-show="showItemState>1"><a @click="showItem(2)">Group</a></el-breadcrumb-item>
+                <el-breadcrumb-item v-show="showItemState>2"><a @click="showItem(3)">Consumer</a></el-breadcrumb-item>
+                <el-breadcrumb-item>
+                    <a @click="refreshData()" style="cursor: pointer" class="el-icon-refresh-right"></a>
+                </el-breadcrumb-item>
+            </el-breadcrumb>
+
+            <el-divider></el-divider>
+            <transition name="el-fade-in">
+                <el-table v-if="showItemState===1" :data="streamList" stripe border highlight-current-row :header-align="'center'">
+                    <el-table-column prop="index" label="" width="30"></el-table-column>
+                    <el-table-column prop="name" label="名称" width="200"></el-table-column>
+                    <el-table-column prop="maxLen" label="最大长度"></el-table-column>
+                    <el-table-column prop="currLen" label="当前长度"></el-table-column>
+                    <el-table-column prop="groups" label="消费分组数"></el-table-column>
+                    <el-table-column label="操作">
+                        <template slot-scope="scope">
+                            <el-button @click="getGroups(scope.row.name)" type="text" size="small">查看分组
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </transition>
+
+
+            <transition name="el-fade-in">
+                <el-table v-if="showItemState===2" :data="groupList" stripe border highlight-current-row  :header-align="'center'">
+                    <el-table-column prop="index" label="" width="30"></el-table-column>
+                    <el-table-column property="raw.name" label="名称" width="200"></el-table-column>
+                    <el-table-column property="raw.consumers" label="消费者数量"></el-table-column>
+                    <el-table-column property="raw.pending" label="未确认的消息数量"></el-table-column>
+                    <el-table-column property="raw.last-delivered-id" label="最后传递的消息的ID"></el-table-column>
+                    <el-table-column label="操作">
+                        <template slot-scope="scope">
+                            <el-button @click="getConsumers(scope.row.raw.stream,scope.row.raw.name)" type="text"
+                                       size="small">查看消费者
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </transition>
+
+
+            <transition name="el-fade-in">
+                <el-table v-if="showItemState===3" :data="consumerList"  stripe border highlight-current-row :header-align="'center'">
+                    <el-table-column prop="index" label="" width="30"></el-table-column>
+                    <el-table-column property="raw.name" label="名称" width="200"></el-table-column>
+                    <el-table-column property="raw.pending" label="未确认的消息数量"></el-table-column>
+                    <el-table-column property="raw.idle" label="距上次读取空闲时间(ms)"></el-table-column>
+                    <el-table-column  label="是否活跃">
+                        <template slot-scope="scope">
+                            {{scope.row.raw.inactive == -1 ? 'Y' : 'N'}}
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </transition>
+
+        </el-main>
+    </el-container>
+
+
+</div>
+
+</body>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<!-- import Vue before Element -->
+<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+<!-- 引入样式 -->
+<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+<!-- import JavaScript -->
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script>
+
+
+    window.vue = new Vue({
+        el: '#hello-app',
+        mounted() {
+            this.getStreams();
+        },
+        data() {
+            return {
+                streamList: [],
+                groupList: [],
+                consumerList: [],
+                showItemState:1,//当前显示那个标签的标记值{1:"stream",2:"group",3:"consumer"}
+                streamSelect: "",//当前选择的stream
+                groupSelect: "",//当前选择的group
+                consumerSelect: "",//当前选择的consumer
+            };
+        },
+        methods: {
+            showItem(state) {
+                this.showItemState = state||1;
+            },
+            refreshData() {
+                let showItemState = this.showItemState;
+                if (showItemState === 1) {
+                    this.getStreams();
+                }
+                if (showItemState === 2) {
+                    this.getGroups(this.streamSelect);
+                }
+                if (showItemState === 3) {
+                    this.getConsumers(this.streamSelect,this.groupSelect);
+                }
+
+            },
+            getStreams() {
+                axios.get("/redis-mq/streams").then(res => {
+                    console.log("streams===", res.data);
+                    this.streamList = res.data;
+                    this.showItem(1);
+                });
+            },
+            getGroups(streamKey) {
+                axios.get("redis-mq/groups?stream=" + streamKey).then(res => {
+                    console.log("groups===", res.data);
+                    this.groupList = res.data;
+                    this.groupList.forEach(row => {
+                        row.raw.stream = streamKey;
+                    })
+                    this.streamSelect = streamKey;
+                    this.groupSelect = "";
+                    this.showItem(2);
+                })
+            },
+            getConsumers(streamKey, groupName) {
+                axios.get("redis-mq/consumers?stream=" + streamKey + "&group=" + groupName).then(res => {
+                    console.log("consumers===", res.data);
+                    this.consumerList = res.data;
+                    this.groupSelect = groupName;
+                    this.showItem(3);
+                })
+            }
+        }
+    })
+</script>
+</html>

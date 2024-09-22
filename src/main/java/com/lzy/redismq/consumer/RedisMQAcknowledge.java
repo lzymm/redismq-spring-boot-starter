@@ -3,11 +3,15 @@ package com.lzy.redismq.consumer;
 import com.lzy.redismq.annotation.RedisMQListenerEndpoint;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.RecordId;
-
-public class StreamAcknowledge {
+/**
+ * RedisMQ 消息手动确认
+ * @author: lzy
+ * @date: 2024-09-12 23:56:54
+ */
+public class RedisMQAcknowledge {
     private final RedisMQListenerEndpoint endpoint;
 
-    public StreamAcknowledge(RedisMQListenerEndpoint endpoint) {
+    public RedisMQAcknowledge(RedisMQListenerEndpoint endpoint) {
         this.endpoint = endpoint;
     }
 
@@ -16,7 +20,7 @@ public class StreamAcknowledge {
      * @param message MapRecord类型的消息
      * @return Long ack的消息长度
      */
-    public Long ack(MapRecord<String, String, Object> message) {
+    public Long ack(MapRecord<String, Object, Object> message) {
         String streamKey = endpoint.getStream();
         String group = endpoint.getGroup();
         RecordId id = message.getId();
