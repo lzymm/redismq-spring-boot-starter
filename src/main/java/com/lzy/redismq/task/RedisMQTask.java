@@ -24,8 +24,8 @@ public class RedisMQTask {
 
     /**
      * pending消息处理任务
-     * 方案1： 取出异常消息，手动ack，重新投递
-     * 方案2：
+     * 方案1：将当前消费者积压未能ack的消息，重新投递，删除原消息
+     * 方案2：将当前消费者积压未能ack的消息转移给其他消费者，并确定
      *
      * @return void
      */
@@ -43,8 +43,8 @@ public class RedisMQTask {
     public void trimStreamLengthHandle() {
         Map<String, Long> streamMap = redisMQHelper.getStreamConfigMap();
         streamMap.forEach((streamKey, maxLen) -> {
-            Map<String, Object> streamInfo = redisMQHelper.getStreamInfo(streamKey);
-            Long currLen = (Long) streamInfo.get("currLen");
+            RedisMQHelper.StreamBaseInfo streamBaseInfo = redisMQHelper.getStreamInfo(streamKey);
+            Long currLen = (Long) streamBaseInfo.getCurrLen();
             maxLen = maxLen == null || maxLen <= 0 ? redisMQHelper.getDefMaxLen() : maxLen;
             if (currLen > maxLen) {
                 redisMQHelper.trim(streamKey, maxLen);

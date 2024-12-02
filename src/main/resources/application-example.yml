@@ -9,7 +9,8 @@ spring:
     client-type: jedis
     stream:
       enable: true
-      defMaxLen: 10
+      def-max-len: 10
+      auto-trim: true
       keys:
         - name: stream1
           max-len: 10

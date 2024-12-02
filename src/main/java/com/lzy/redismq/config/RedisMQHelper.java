@@ -1,5 +1,6 @@
 package com.lzy.redismq.config;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -169,22 +170,22 @@ public class RedisMQHelper {
         return anyMatch;
     }
 
-    public Map<String, Object> getStreamInfo(String streamKey) {
+    public StreamBaseInfo getStreamInfo(String streamKey) {
         return getStreamInfo(new RedisMQProperties.RedisMQInfo(streamKey,getDefMaxLen()));
     }
-    public Map<String, Object> getStreamInfo(RedisMQProperties.RedisMQInfo streamKeyInfo) {
+    public StreamBaseInfo getStreamInfo(RedisMQProperties.RedisMQInfo streamKeyInfo) {
         StreamInfo.XInfoStream info = redisTemplate.opsForStream().info(streamKeyInfo.getName());
-        return Map.of(
-                "name",streamKeyInfo.getName(),
-                "maxLen", streamKeyInfo.getMaxLen(),
-                "currLen",info.getRaw().get("length"),
-                "groups",info.getRaw().get("groups"),
-                "last-generated-id",info.getRaw().get("last-generated-id")
-        );
+        return new StreamBaseInfo.StreamBaseInfoBuilder()
+                .name(streamKeyInfo.getName())
+                .maxLen(streamKeyInfo.getMaxLen())
+                .currLen(info.getRaw().get("length"))
+                .groups(info.getRaw().get("groups"))
+                .lastGeneratedId(info.getRaw().get("last-generated-id")).build();
+
     }
-    public List<Map> streams() {
+    public List<StreamBaseInfo> streams() {
         List<RedisMQProperties.RedisMQInfo> streams = this.redisMQProperties.getKeys();
-        List<Map> streamList = streams.stream().map(streamKey -> getStreamInfo(streamKey)).collect(Collectors.toList());
+        List<StreamBaseInfo> streamList = streams.stream().map(streamKey -> getStreamInfo(streamKey)).collect(Collectors.toList());
         return streamList;
     }
     public StreamInfo.XInfoGroups groups(String streamKey) {
@@ -196,5 +197,17 @@ public class RedisMQHelper {
     }
     public Long size(String streamKey) {
         return redisTemplate.opsForStream().size(streamKey);
+    }
+
+
+    @Getter
+    @Setter
+    @Builder
+    public static class StreamBaseInfo {
+        private String name;
+        private Object maxLen;
+        private Object currLen;
+        private Object groups;
+        private Object lastGeneratedId;
     }
 }

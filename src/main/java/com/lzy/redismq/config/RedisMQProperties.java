@@ -24,6 +24,11 @@ public class RedisMQProperties {
      * stream 队列默认最大长度
      */
     private Long defMaxLen = 5000L;
+
+    /**
+     * 是否自动trim队列长度
+     */
+    private boolean autoTrim = true;
     /**
      * stream key 信息
      * name: stream key 名称

@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import javax.validation.constraints.NotBlank;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -30,7 +29,7 @@ public class DashboardController{
     @GetMapping("/streams")
     @ResponseBody
     public Object getStreams(){
-        List<Map> streams = redisMQHelper.streams();
+        List<RedisMQHelper.StreamBaseInfo> streams = redisMQHelper.streams();
         return streams;
     }
     @GetMapping("/groups")
